@@ -8,17 +8,16 @@ import "./app.css";
 import { waitForDomChange } from "@testing-library/react";
 
 export default class App extends Component {
-
-  // General 
+  // General
   maxId = 100;
 
-  createTodoItem(label){
+  createTodoItem(label) {
     return {
       id: this.maxId++,
       label,
       important: false,
-      done: false
-    }
+      done: false,
+    };
   }
 
   // State
@@ -26,10 +25,11 @@ export default class App extends Component {
     todoData: [
       this.createTodoItem("Drink Coffee"),
       this.createTodoItem("Make Awesome App"),
-      this.createTodoItem("Have a lunch")
+      this.createTodoItem("Have a lunch"),
     ],
+    term: "",
+    filter: "all", // all, active, done
   };
-
 
   deleteItem = id => {
     this.setState(({ todoData }) => {
@@ -54,57 +54,102 @@ export default class App extends Component {
   };
 
   onToggleImportant = id => {
-    this.setState(({todoData}) => {
-
+    this.setState(({ todoData }) => {
       // 1. update object
       const idx = todoData.findIndex(el => el.id === id);
       const oldItem = todoData[idx];
-      const newItem = {...oldItem, important: !oldItem.important}
+      const newItem = { ...oldItem, important: !oldItem.important };
 
       // 2. construct new array
-      const newArray = [...todoData.slice(0, idx), newItem, ...todoData.slice(idx + 1)];
-
-      // 3. Return state
-      return{
-        todoData: newArray
-      }
-    })
-  };
-
-  onToggleDone = id => {          // если старый массив нужен ---> передаём функцию.
-    this.setState(({todoData}) => {
-
-      // 1. update object
-      const idx = todoData.findIndex(el => el.id === id);
-      const oldItem = todoData[idx];
-      const newItem = {...oldItem, done: !oldItem.done}
-
-      // 2. construct new array
-      const newArray = [...todoData.slice(0, idx), newItem, ...todoData.slice(idx + 1)];
+      const newArray = [
+        ...todoData.slice(0, idx),
+        newItem,
+        ...todoData.slice(idx + 1),
+      ];
 
       // 3. Return state
       return {
-        todoData: newArray
-      }
-    })
+        todoData: newArray,
+      };
+    });
   };
 
-  render() {
+  onToggleDone = id => {
+    // если старый массив нужен ---> передаём функцию.
+    this.setState(({ todoData }) => {
+      // 1. update object
+      const idx = todoData.findIndex(el => el.id === id);
+      const oldItem = todoData[idx];
+      const newItem = { ...oldItem, done: !oldItem.done };
 
-    const {todoData} = this.state;
-    let doneItems = todoData.filter((el) => el.done === true).length;
-    let toDoItems = todoData.length - doneItems;
-      
+      // 2. construct new array
+      const newArray = [
+        ...todoData.slice(0, idx),
+        newItem,
+        ...todoData.slice(idx + 1),
+      ];
+
+      // 3. Return state
+      return {
+        todoData: newArray,
+      };
+    });
+  };
+
+  onSearchChange = term => {
+    this.setState({ term });
+  };
+
+  onFilterChange = filter => {
+    this.setState({ filter });
+  };
+
+  search(items, term) {
+    if (term.length === 0) {
+      return items;
+    }
+
+    return items.filter(item => {
+      return item.label.toLowerCase().indexOf(term.toLowerCase()) > -1;
+    });
+  }
+
+  filter(items, filter) {
+    switch (filter) {
+      case "all":
+        return items;
+
+      case "active":
+        return items.filter(item => !item.done);
+
+      case "done":
+        return items.filter(item => item.done);
+
+      default:
+        return items;
+    }
+  }
+
+  render() {
+    const { todoData, term, filter } = this.state;
+
+    const visibleItems = this.filter(this.search(todoData, term), filter);
+    const doneItems = todoData.filter(el => el.done === true).length;
+    const toDoItems = todoData.length - doneItems;
+
     return (
       <React.StrictMode>
         <div className="todo-app">
           <AppHeader toDo={toDoItems} done={doneItems} />
           <div className="top-panel d-flex justify-content-between">
-            <SearchPanel />
-            <ItemStatusFilter />
+            <SearchPanel onSearchChange={this.onSearchChange} />
+            <ItemStatusFilter
+              filter={filter}
+              onFilterChange={this.onFilterChange}
+            />
           </div>
           <TodoList
-            todos={todoData}
+            todos={visibleItems}
             onDeleted={this.deleteItem}
             onToggleImportant={this.onToggleImportant}
             onToggleDone={this.onToggleDone}
